@@ -4,294 +4,117 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Chat App</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.0/socket.io.js"></script>
-    <script src="https://unpkg.com/@joeattardi/emoji-button@latest/dist/index.min.js"></script>
     <style>
         body {
-            margin: 0;
             font-family: Arial, sans-serif;
-            background-color: #f0f0f0;
+            background-color: #f4f4f4;
             display: flex;
             justify-content: center;
             align-items: center;
             height: 100vh;
+            margin: 0;
         }
-        .login-container {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            background: white;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-            gap: 15px;
-        }
-        .chat-container {
+        #chat-container {
             width: 400px;
-            height: 600px;
             background-color: white;
-            border: 1px solid #ccc;
             border-radius: 10px;
-            display: flex;
-            flex-direction: column;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-            margin: 20px auto;
-            display: none; /* Hide chat by default */
+            padding: 20px;
+            display: none;
         }
-        .header {
-            background-color: #25D366;
-            color: white;
+        #chat-box {
+            height: 300px;
+            border: 1px solid #ddd;
+            overflow-y: scroll;
             padding: 10px;
-            text-align: center;
-            border-top-left-radius: 10px;
-            border-top-right-radius: 10px;
+            margin-bottom: 20px;
         }
-        #chat-window {
-            flex: 1;
-            padding: 10px;
-            overflow-y: auto;
+        #chat-box p {
+            margin: 5px 0;
         }
         .input-container {
             display: flex;
-            padding: 10px;
-            border-top: 1px solid #ccc;
+            justify-content: space-between;
         }
-        input[type="text"] {
-            flex: 1;
+        .input-container input {
+            width: 80%;
             padding: 10px;
-            border: 1px solid #ccc;
+            border: 1px solid #ddd;
             border-radius: 5px;
         }
-        button {
-            background-color: #25D366;
+        .input-container button {
+            padding: 10px 20px;
+            background-color: #007bff;
             color: white;
             border: none;
-            padding: 10px 15px;
             border-radius: 5px;
-            margin-left: 10px;
             cursor: pointer;
         }
-        button:hover {
-            background-color: #128C7E;
-        }
-        .leave {
-            background-color: #25D366;
-            color: white;
-            border: none;
-            padding: 10px 15px;
-            border-radius: 5px;
-            margin-left: 10px;
-            cursor: pointer;
-        }
-        .leave:hover {
-            background-color: rgb(151, 23, 23);
-        }
-        .message {
-            margin: 5px 0;
-            padding: 10px;
-            border-radius: 5px;
-            position: relative;
-            display: flex;
-            flex-direction: column;
-            max-width: 80%;
-            word-wrap: break-word;
-        }
-        .message.other {
-            background-color: #dcf8c6; /* Color for other users' messages */
-            align-self: flex-start; /* Align other messages to the left */
-        }
-        .message.self {
-            background-color: #e0f7fa; /* Color for self messages */
-            align-self: flex-end; /* Align self messages to the right */
-        }
-        .timestamp {
-            font-size: 0.8em; /* Smaller font size for the timestamp */
-            color: gray; /* Color for the timestamp */
-            margin-top: 5px; /* Space between message and timestamp */
-            align-self: flex-end; /* Align timestamp to the right */
-        }
-        .system-message {
-            color: gray;
-            font-size: 0.9em;
-        }
-        #typingIndicator {
-            display: none;
-            color: gray;
-            font-style: italic;
-        }
-        #userList {
-            margin: 10px 0;
-            padding: 10px;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-            background: #f9f9f9;
-            max-height: 100px;
-            overflow-y: auto;
-        }
-        .dark-mode {
-            background-color: #121212;
-            color: white;
-        }
-        .dark-mode .chat-container {
-            background-color: #1E1E1E;
+        #login-container {
+            text-align: center;
         }
     </style>
 </head>
 <body>
-    <div class="login-container" id="loginContainer">
-        <h2>Welcome to Chat App</h2>
-        <input type="text" id="usernameInput" placeholder="Enter your name" />
-        <input type="text" id="roomInput" placeholder="Enter room name" />
-        <button id="joinRoomButton">Join Room</button>
+
+<div id="login-container">
+    <h1>Join Chat</h1>
+    <input type="text" id="username" placeholder="Enter username" />
+    <input type="text" id="room" placeholder="Enter room" />
+    <button onclick="joinChat()">Join</button>
+</div>
+
+<div id="chat-container">
+    <h1>Chat Room</h1>
+    <div id="chat-box"></div>
+    <div class="input-container">
+        <input type="text" id="message-input" placeholder="Enter message..." />
+        <button onclick="sendMessage()">Send</button>
     </div>
-    
-    <div class="chat-container" id="chatContainer">
-        <div class="header">
-            <h2>Chat Room</h2>
-            <button class="leave" id="leaveRoomButton">Leave Room</button>
-        </div>
-        <div id="userList"></div> <!-- User List -->
-        <div id="chat-window">
-            <div id="messages"></div>
-        </div>
-        <div id="typingIndicator">Someone is typing...</div>
-        <div class="input-container">
-            <input type="text" id="messageInput" placeholder="Type a message..." />
-            <button id="emojiButton">😀</button>
-            <button id="sendButton">Send</button>
-            <input type="file" id="fileInput" />
-        </div>
-        <button id="toggleTheme">Toggle Dark Mode</button> <!-- Dark Mode Toggle -->
-    </div>
-    
-    <script>
-        const socket = io();
-        let username = '';
-        let room = '';
-        const picker = new EmojiButton();
+    <button onclick="leaveChat()">Leave</button>
+</div>
 
-        document.getElementById('joinRoomButton').addEventListener('click', function() {
-            username = document.getElementById('usernameInput').value;
-            room = document.getElementById('roomInput').value;
-            socket.emit('join', { username: username, room: room });
-            document.getElementById('loginContainer').style.display = 'none';
-            document.getElementById('chatContainer').style.display = 'block';
-        });
+<script src="https://cdn.socket.io/4.0.1/socket.io.min.js"></script>
+<script>
+    const socket = io();
+    let username, room;
 
-        document.getElementById('leaveRoomButton').addEventListener('click', function() {
-            socket.emit('leave', { username: username, room: room });
-            document.getElementById('loginContainer').style.display = 'flex';
-            document.getElementById('chatContainer').style.display = 'none';
-            document.getElementById('messages').innerHTML = ''; // Clear messages
-            document.getElementById('userList').innerHTML = ''; // Clear user list
-            username = '';
-            room = '';
-        });
+    function joinChat() {
+        username = document.getElementById('username').value;
+        room = document.getElementById('room').value;
 
-        document.getElementById('sendButton').addEventListener('click', function() {
-            const messageInput = document.getElementById('messageInput');
-            const message = messageInput.value;
-            if (message) {
-                socket.emit('send_message', { message: message, username: username, room: room });
-                messageInput.value = ''; // Clear input
-            }
-        });
+        if (!username || !room) {
+            alert('Both username and room are required.');
+            return;
+        }
 
-        document.getElementById('fileInput').addEventListener('change', function(event) {
-            const file = event.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    socket.emit('send_file', { file: e.target.result, filename: file.name, username: username, room: room });
-                };
-                reader.readAsDataURL(file);
-            }
-        });
+        socket.emit('join', { username: username, room: room });
 
-        socket.on('receive_message', function(data) {
-            const messagesDiv = document.getElementById('messages');
-            const messageDiv = document.createElement('div');
-            const isSelf = data.username === username;
+        document.getElementById('login-container').style.display = 'none';
+        document.getElementById('chat-container').style.display = 'block';
+    }
 
-            messageDiv.classList.add('message', isSelf ? 'self' : 'other');
-            messageDiv.innerHTML = `<strong>${isSelf ? 'You' : data.username}</strong>: ${data.message} <div class="timestamp">${data.timestamp}</div>`;
-            messagesDiv.appendChild(messageDiv);
-            messagesDiv.scrollTop = messagesDiv.scrollHeight; // Scroll to the bottom
-        });
+    function sendMessage() {
+        const message = document.getElementById('message-input').value;
+        if (message) {
+            socket.emit('message', { username: username, room: room, message: message });
+            document.getElementById('message-input').value = ''; // Clear input field
+        }
+    }
 
-        socket.on('receive_file', function(data) {
-            const messagesDiv = document.getElementById('messages');
-            const messageDiv = document.createElement('div');
-            const isSelf = data.username === username;
+    function leaveChat() {
+        socket.emit('leave', { username: username, room: room });
+        document.getElementById('login-container').style.display = 'block';
+        document.getElementById('chat-container').style.display = 'none';
+    }
 
-            messageDiv.classList.add('message', isSelf ? 'self' : 'other');
-            messageDiv.innerHTML = `<strong>${isSelf ? 'You' : data.username}</strong>: <a href="${data.file}" download="${data.filename}">${data.filename}</a> <div class="timestamp">${data.timestamp}</div>`;
-            messagesDiv.appendChild(messageDiv);
-            messagesDiv.scrollTop = messagesDiv.scrollHeight; // Scroll to the bottom
-        });
+    // Listen for messages from the server
+    socket.on('message', function(data) {
+        const chatBox = document.getElementById('chat-box');
+        chatBox.innerHTML += `<p>${data}</p>`;
+        chatBox.scrollTop = chatBox.scrollHeight; // Auto scroll to bottom
+    });
+</script>
 
-        socket.on('system_message', function(data) {
-            const messagesDiv = document.getElementById('messages');
-            const messageDiv = document.createElement('div');
-            messageDiv.classList.add('system-message');
-            messageDiv.innerText = data.message;
-            messagesDiv.appendChild(messageDiv);
-            messagesDiv.scrollTop = messagesDiv.scrollHeight; // Scroll to the bottom
-        });
-
-        socket.on('user_list', function(data) {
-            const userListDiv = document.getElementById('userList');
-            userListDiv.innerHTML = ''; // Clear the list
-            data.users.forEach(function(user) {
-                const userDiv = document.createElement('div');
-                userDiv.innerText = user;
-                userListDiv.appendChild(userDiv);
-            });
-        });
-
-        socket.on('message_history', function(messages) {
-            const messagesDiv = document.getElementById('messages');
-            messages.forEach(function(data) {
-                const messageDiv = document.createElement('div');
-                const isSelf = data.username === username;
-
-                messageDiv.classList.add('message', isSelf ? 'self' : 'other');
-                messageDiv.innerHTML = `<strong>${isSelf ? 'You' : data.username}</strong>: ${data.message} <div class="timestamp">${data.timestamp}</div>`;
-                messagesDiv.appendChild(messageDiv);
-            });
-            messagesDiv.scrollTop = messagesDiv.scrollHeight; // Scroll to the bottom
-        });
-
-        document.getElementById('messageInput').addEventListener('keyup', function() {
-            if (this.value) {
-                socket.emit('typing', { username: username, room: room });
-            } else {
-                socket.emit('stop_typing', { room: room });
-            }
-        });
-
-        socket.on('typing', function(data) {
-            document.getElementById('typingIndicator').innerText = `${data.username} is typing...`;
-            document.getElementById('typingIndicator').style.display = 'block';
-        });
-
-        socket.on('stop_typing', function() {
-            document.getElementById('typingIndicator').style.display = 'none';
-        });
-
-        // Emoji Button Functionality
-        picker.on('emoji', emoji => {
-            const input = document.getElementById('messageInput');
-            input.value += emoji;
-        });
-        document.getElementById('emojiButton').addEventListener('click', () => {
-            picker.togglePicker(document.getElementById('emojiButton'));
-        });
-
-        // Dark Mode Toggle
-        document.getElementById('toggleTheme').addEventListener('click', function() {
-            document.body.classList.toggle('dark-mode');
-        });
-    </script>
 </body>
 </html>
