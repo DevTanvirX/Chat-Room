@@ -1,54 +1,53 @@
-# app.py
 from flask import Flask, render_template, request
-from flask_socketio import SocketIO, join_room, leave_room, send
-import uuid
+from flask_socketio import SocketIO, join_room, leave_room, emit
+from datetime import datetime
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'secret!'
+app.config['SECRET_KEY'] = 'your_secret_key'
 socketio = SocketIO(app)
 
-# Store users and messages (temporary)
-rooms = {}
-
-# Render the main chat interface
+# Route to render the index.html
 @app.route('/')
 def index():
     return render_template('index.html')
 
-# Handle joining rooms (chats)
+# Handle users joining a chat room
 @socketio.on('join')
-def handle_join(data):
+def on_join(data):
     username = data['username']
     room = data['room']
-
-    # Create room if it doesn't exist
-    if room not in rooms:
-        rooms[room] = []
-    
     join_room(room)
-    send(f'{username} has joined the room.', to=room)
+    emit('system_message', {'message': f'{username} has joined the room.'}, room=room)
 
-# Handle leaving rooms
+# Handle users leaving a chat room
 @socketio.on('leave')
-def handle_leave(data):
+def on_leave(data):
     username = data['username']
     room = data['room']
     leave_room(room)
-    send(f'{username} has left the room.', to=room)
+    emit('system_message', {'message': f'{username} has left the room.'}, room=room)
 
-# Handle message sending
-@socketio.on('message')
-def handle_message(data):
-    room = data['room']
+# Handle sending a message
+@socketio.on('send_message')
+def handle_send_message(data):
     message = data['message']
     username = data['username']
+    room = data['room']
+    timestamp = datetime.now().strftime('%H:%M:%S')
+    emit('receive_message', {'message': message, 'username': username, 'timestamp': timestamp}, room=room)
 
-    # Save message to room's message list
-    rooms[room].append({'username': username, 'message': message})
-    
-    send(f'{username}: {message}', to=room)
+# Handle typing indicator
+@socketio.on('typing')
+def handle_typing(data):
+    username = data['username']
+    room = data['room']
+    emit('typing', {'username': username}, room=room)
 
-# if __name__ == '__main__':
-#     socketio.run(app, debug=True)
-if __name__ == "__main__":
-    socketio.run(app, debug=True, host='0.0.0.0', port=5000,)
+# Handle stopping typing indicator
+@socketio.on('stop_typing')
+def handle_stop_typing(data):
+    room = data['room']
+    emit('stop_typing', room=room)
+
+if __name__ == '__main__':
+    socketio.run(app, host='0.0.0.0')
